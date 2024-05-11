@@ -66,6 +66,48 @@ class SettingsDatabase(DatabaseBase):
             )
             return False
 
+    def set_default_role(self, guildId: int, roleId: int, categoryId: typing.Optional[int] = None, userId: typing.Optional[int] = None) -> bool:
+        _method = inspect.stack()[0][3]
+        try:
+            if self.connection is None:
+                self.open()
+
+            if userId is not None: # check user settings
+                user_settings = self.connection.user_settings.find_one({"guild_id": str(guildId), "user_id": str(userId)})
+                if user_settings:
+                    self.connection.user_settings.update_one(
+                        {"guild_id": str(guildId), "user_id": str(userId)},
+                        {"$set": {"default_role": str(roleId), "timestamp": utils.get_timestamp()}},
+                        upsert=True,
+                    )
+                    return True
+
+            if categoryId is not None:
+                category_settings = self.connection.category_settings.find_one({"guild_id": str(guildId), "category_id": str(categoryId)})
+                if category_settings:
+                    self.connection.category_settings.update_one(
+                        {"guild_id": str(guildId), "category_id": str(categoryId)},
+                        {"$set": {"default_role": str(roleId), "timestamp": utils.get_timestamp()}},
+                        upsert=True,
+                    )
+                    return True
+
+            self.connection.guild_settings.update_one(
+                {"guild_id": str(guildId)},
+                {"$set": {"default_role": str(roleId), "timestamp": utils.get_timestamp()}},
+                upsert=True,
+            )
+            return True
+        except Exception as ex:
+            self.log(
+                guildId=guildId,
+                level=LogLevel.ERROR,
+                method=f"{self._module}.{self._class}.{_method}",
+                message=f"{ex}",
+                stackTrace=traceback.format_exc(),
+            )
+            return False
+
     def get_default_role(self, guildId: int, categoryId: typing.Optional[int], userId: typing.Optional[int]) -> typing.Optional[int]:
         _method = inspect.stack()[0][3]
         try:

@@ -406,27 +406,32 @@ class SetupCog(commands.Cog):
         locked: typing.Optional[bool] = False,
         default_role: typing.Optional[discord.Role] = None,
     ):
+        _method = inspect.stack()[0][3]
         if interaction.guild is None:
             return
 
-        # is user an admin
-        if not self._users.isAdmin(interaction):
-            await interaction.response.send_message("You are not an administrator of the bot. You cannot use this command.", ephemeral=True)
-            return
-
         guild_id = interaction.guild.id
-        await self._configure_category(
-            guild_id=guild_id,
-            category_id=category.id,
-            bitrate=bitrate,
-            limit=limit,
-            auto_game=auto_game,
-            allow_soundboard=allow_soundboard,
-            auto_name=auto_name,
-            locked=locked,
-            default_role=default_role
-        )
-        await interaction.response.send_message("Category settings updated", ephemeral=True)
+        try:
+            if not self._users.isAdmin(interaction):
+                await interaction.response.send_message(
+                    self.settings.get_string(interaction.guild.id, "info_permission_denied"),
+                    ephemeral=True,
+                )
+                return
+            await self._configure_category(
+                guild_id=guild_id,
+                category_id=category.id,
+                bitrate=bitrate,
+                limit=limit,
+                auto_game=auto_game,
+                allow_soundboard=allow_soundboard,
+                auto_name=auto_name,
+                locked=locked,
+                default_role=default_role,
+            )
+            await interaction.response.send_message("Category settings updated", ephemeral=True)
+        except Exception as e:
+            self.log.error(guild_id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
 
     async def _configure_category(
         self,
@@ -484,13 +489,16 @@ class SetupCog(commands.Cog):
         if interaction.guild is None:
             return
 
-        # is user an admin
-        if not self._users.isAdmin(interaction):
-            await interaction.response.send_message("You are not an administrator of the bot. You cannot use this command.", ephemeral=True)
-            return
-
         guild_id = interaction.guild.id
         try:
+            # is user an admin
+            if not self._users.isAdmin(interaction):
+                await interaction.response.send_message(
+                    self.settings.get_string(interaction.guild.id, "info_permission_denied"),
+                    ephemeral=True,
+                )
+                return
+
             if channel_name is None or channel_name == "":
                 channel_name = "CREATE CHANNEL 🔊"
             if use_stage is None:
@@ -512,15 +520,15 @@ class SetupCog(commands.Cog):
                     bitrate=64 * 1000,
                     user_limit=0,
                     position=0,
-                    # overrites={
-                    #     temp_default_role: discord.PermissionOverwrite(
-                    #         view_channel=True,
-                    #         connect=True,
-                    #         speak=True,
-                    #         stream=False,
-                    #         use_voice_activation=True
-                    #     )
-                    # },
+                    overwrites={
+                        temp_default_role: discord.PermissionOverwrite(
+                            view_channel=True,
+                            connect=True,
+                            speak=True,
+                            stream=False,
+                            use_voice_activation=True
+                        )
+                    },
                     reason=f"Created for VoiceCreateBot by {interaction.user.name}"
                 )
             else:
@@ -529,15 +537,15 @@ class SetupCog(commands.Cog):
                     bitrate=64 * 1000,
                     user_limit=0,
                     position=0,
-                    # overrites={
-                    #     temp_default_role: discord.PermissionOverwrite(
-                    #         view_channel=True,
-                    #         connect=True,
-                    #         speak=True,
-                    #         stream=False,
-                    #         use_voice_activation=True
-                    #     )
-                    # },
+                    overwrites={
+                        temp_default_role: discord.PermissionOverwrite(
+                            view_channel=True,
+                            connect=True,
+                            speak=True,
+                            stream=False,
+                            use_voice_activation=True
+                        )
+                    },
                     reason=f"Created for VoiceCreateBot by {interaction.user.name}"
                 )
 
@@ -657,6 +665,63 @@ class SetupCog(commands.Cog):
         except Exception as e:
             self.log.error(ctx.guild.id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
 
+    @group.command(name="admin", description="Add or remove an admin role")
+    @commands.guild_only()
+    @app_commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(action="Add or Remove the role")
+    @app_commands.describe(role="The role to add or remove")
+    async def role_admin_app_command(self, interaction: discord.Interaction, action: AddRemoveAction, role: discord.Role):
+        _method = inspect.stack()[0][3]
+        if interaction.guild is None:
+            return
+
+        guild_id = interaction.guild.id
+        try:
+            if not self._users.isAdmin(interaction):
+                await interaction.response.send_message(
+                    self.settings.get_string(guild_id, "info_permission_denied"),
+                    ephemeral=True,
+                )
+                return
+
+            if action == AddRemoveAction.ADD:
+                self.settings.db.add_admin_role(guildId=guild_id, roleId=role.id)
+                await interaction.response.send_message(f"Added role {role.name}", ephemeral=True)
+            elif action == AddRemoveAction.REMOVE:
+                self.settings.db.delete_admin_role(guildId=guild_id, roleId=role.id)
+                await interaction.response.send_message(f"Removed role {role.name}", ephemeral=True)
+        except Exception as e:
+            self.log.error(guild_id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
+            await self.messaging.notify_of_error(interaction)
+
+    @group.command(name="default-role", description="Set the default role for channels")
+    @commands.guild_only()
+    @app_commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(role="The role to set as the default role for channels")
+    async def role_default_app_command(self, interaction: discord.Interaction, role: discord.Role):
+        _method = inspect.stack()[0][3]
+        if interaction.guild is None:
+            return
+
+        guild_id = interaction.guild.id
+        try:
+            if not self._users.isAdmin(interaction):
+                await interaction.response.send_message(
+                    self.settings.get_string(guild_id, "info_permission_denied"),
+                    ephemeral=True,
+                )
+                return
+
+            self.settings.db.set_default_role(guildId=guild_id, roleId=role.id)
+            await interaction.response.send_message(f"Set role {role.name} as the default guild role", ephemeral=True)
+        except Exception as e:
+            self.log.error(guild_id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
+            await self.messaging.notify_of_error(interaction)
+
     @role.command(name="admin", aliases=['a'])
     @commands.guild_only()
     @commands.has_permissions(administrator=True)
@@ -664,6 +729,15 @@ class SetupCog(commands.Cog):
         _method = inspect.stack()[0][3]
         guild_id = ctx.guild.id
         try:
+            if not self._users.isAdmin(ctx):
+                await self.messaging.send_embed(
+                    channel=ctx.channel,
+                    message=self.settings.get_string(guild_id, "info_permission_denied"),
+                    title=self.settings.get_string(guild_id, "title_permission_denied"),
+                    delete_after=10
+                )
+                return
+
             if action is None and role is None:
                 # return the list of admin roles
                 pass
