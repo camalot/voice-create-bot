@@ -23,6 +23,54 @@ class ChannelsDatabase(Database):
         )
         pass
 
+    def get_create_channel(self, guildId: int, voiceChannelId: int):
+        _method = inspect.stack()[0][3]
+        try:
+            if self.connection is None:
+                self.open()
+            result = self.connection.create_channels.find_one(
+                {"guild_id": str(guildId), "voice_channel_id": str(voiceChannelId)}
+            )
+            return result
+        except Exception as ex:
+            self.log(
+                guildId=guildId,
+                level=LogLevel.ERROR,
+                method=f"{self._module}.{self._class}.{_method}",
+                message=f"{ex}",
+                stackTrace=traceback.format_exc(),
+            )
+            return None
+
+    def set_create_channel(self, guildId: int, voiceChannelId: int, categoryId: int, ownerId: int, useStage: bool):
+        _method = inspect.stack()[0][3]
+        try:
+            if self.connection is None:
+                self.open()
+            payload = {
+                "guild_id": str(guildId),
+                "voice_channel_id": str(voiceChannelId),
+                "voice_category_id": str(categoryId),
+                "owner_id": str(ownerId),
+                "use_stage": useStage,
+                "timestamp": utils.get_timestamp(),
+            }
+            self.connection.create_channels.update_one(
+                {"guild_id": str(guildId), "voice_channel_id": str(voiceChannelId)},
+                {"$set": payload},
+                upsert=True,
+            )
+            return True
+        except Exception as ex:
+            self.log(
+                guildId=guildId,
+                level=LogLevel.ERROR,
+                method=f"{self._module}.{self._class}.{_method}",
+                message=f"Failed to set create channel: {ex}",
+                stackTrace=traceback.format_exc(),
+            )
+            return False
+
     def track_channel_name(self, guildId: int, channelId: int, ownerId: int, name: str) -> None:
         _method = inspect.stack()[0][3]
         try:

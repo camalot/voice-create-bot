@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import traceback
+import json
 
 from time import gmtime, strftime
 import os
@@ -471,110 +472,87 @@ class SetupCog(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @group.command(name="channel", description="Create a new CREATE voice channel")
     @app_commands.describe(channel_name="The name of the channel to create. Default: CREATE CHANNEL 🔊")
-    @app_commands.describe(category="The category to create the channel in and all dynamic channels. Default: None")
+    @app_commands.describe(category="The category to create the channel in and all dynamic channels.")
     async def channel_app_command(
         self,
         interaction: discord.Interaction,
-        channel_name: typing.Optional[str] = None,
-        category: typing.Optional[discord.CategoryChannel] = None
+        category: discord.CategoryChannel,
+        channel_name: typing.Optional[str] = "CREATE CHANNEL 🔊",
+        use_stage: typing.Optional[bool] = False,
     ):
-        pass
-
-    @setup.command(name='init', aliases=['i'])
-    @commands.guild_only()
-    @commands.has_permissions(administrator=True)
-    async def init(self, ctx):
         _method = inspect.stack()[0][3]
-        guild_id = ctx.guild.id
+        if interaction.guild is None:
+            return
+
+        # is user an admin
+        if not self._users.isAdmin(interaction):
+            await interaction.response.send_message("You are not an administrator of the bot. You cannot use this command.", ephemeral=True)
+            return
+
+        guild_id = interaction.guild.id
         try:
-            # this should be configurable
-            exclude_roles = [r.id for r in ctx.guild.roles if r.name.lower().startswith('lfg-')]
-            async def rsv_callback(view, interaction):
-                await interaction.response.defer()
-                await rsv_message.delete()
-                # get the role
-                role_id = int(interaction.data['values'][0])
-                # get the role object
-                role = utils.get_by_name_or_id(ctx.guild.roles, role_id)
-                if role is None:
-                    await self.messaging.send_embed(
-                        ctx.channel,
-                        self.settings.get_string(guild_id, "title_role_not_found"),
-                        f"{ctx.author.mention}, {self.settings.get_string(guild_id, 'info_role_not_found')}",
-                        delete_after=5,
-                    )
-                    return
+            if channel_name is None or channel_name == "":
+                channel_name = "CREATE CHANNEL 🔊"
+            if use_stage is None:
+                use_stage = False
 
-                await ctx.send(f"Role selected: {role.name}")
-                selected_role = role
+            self.log.debug(guild_id, _method, f"category: {category}")
 
-                async def csv_callback(view, interaction):
-                    await interaction.response.defer()
-                    await csv_message.delete()
-
-                    category_id = int(interaction.data['values'][0])
-                    if category_id == -2:
-                        # create a new category
-                        await ctx.send("TODO: Create a new category", delete_after=5)
-                        return
-                    if category_id == -1:
-                        # no category selected
-                        await ctx.send("TODO: No category selected", delete_after=5)
-                        return
-                    if category_id == 0:
-                        # other category selected
-                        await ctx.send("TODO: Other category selected", delete_after=5)
-                        return
-
-                    # get the role object
-                    category: discord.CategoryChannel = utils.get_by_name_or_id(ctx.guild.categories, category_id)
-                    if not category:
-                        await ctx.send("Category not found", delete_after=5)
-                    selected_category = category
-                    await ctx.send(f"Category selected: {category.name}")
-
-
-                async def csv_timeout_callback(view):
-                    await csv_message.delete()
-                    # took too long to respond
-                    await self.messaging.send_embed(ctx.channel, self.settings.get_string(guild_id, "title_timeout"), f"{ctx.author.mention}, {self.settings.get_string(guild_id, 'took_too_long')}", delete_after=5)
-                    pass
-
-
-                csv = CategorySelectView(
-                    ctx=ctx,
-                    placeholder=self.settings.get_string(guild_id, "title_select_category"),
-                    categories=ctx.guild.categories,
-                    select_callback=csv_callback,
-                    timeout_callback=csv_timeout_callback,
-                    allow_none=False,
-                    allow_new=True,
-                    timeout=60
-                )
-                csv_message = await ctx.send(view=csv)
-            async def rsv_timeout_callback(view):
-                await rsv_message.delete()
-                # took too long to respond
-                await self.messaging.send_embed(ctx.channel, self.settings.get_string(guild_id, "title_timeout"), f"{ctx.author.mention}, {self.settings.get_string(guild_id, 'took_too_long')}", delete_after=5)
-                pass
-
-
-            selected_role = None
-            selected_category = None
-            # ask for the default user role.
-            rsv = RoleSelectView(
-                ctx=ctx,
-                placeholder=self.settings.get_string(guild_id, "title_select_default_role"),
-                exclude_roles=exclude_roles,
-                select_callback=rsv_callback,
-                timeout_callback=rsv_timeout_callback,
-                allow_none=False,
-
-                timeout=60
+            default_role = self.settings.db.get_default_role(
+                guildId=guild_id, categoryId=category.id, userId=None
             )
-            rsv_message = await ctx.send(view=rsv)
+            self.log.debug(guild_id, _method, f"default_role: {default_role}")
+            temp_default_role = utils.get_by_name_or_id(interaction.guild.roles, default_role)
+            self.log.debug(guild_id, _method, f"temp_default_role: {temp_default_role}")
+            system_default_role = interaction.guild.default_role
+            temp_default_role = temp_default_role if temp_default_role else system_default_role
+            if use_stage:
+                new_channel = await category.create_stage_channel(
+                    name=channel_name,
+                    bitrate=64 * 1000,
+                    user_limit=0,
+                    position=0,
+                    # overrites={
+                    #     temp_default_role: discord.PermissionOverwrite(
+                    #         view_channel=True,
+                    #         connect=True,
+                    #         speak=True,
+                    #         stream=False,
+                    #         use_voice_activation=True
+                    #     )
+                    # },
+                    reason=f"Created for VoiceCreateBot by {interaction.user.name}"
+                )
+            else:
+                new_channel = await category.create_voice_channel(
+                    name=channel_name,
+                    bitrate=64 * 1000,
+                    user_limit=0,
+                    position=0,
+                    # overrites={
+                    #     temp_default_role: discord.PermissionOverwrite(
+                    #         view_channel=True,
+                    #         connect=True,
+                    #         speak=True,
+                    #         stream=False,
+                    #         use_voice_activation=True
+                    #     )
+                    # },
+                    reason=f"Created for VoiceCreateBot by {interaction.user.name}"
+                )
+
+            self.channel_db.set_create_channel(
+                guildId=guild_id,
+                voiceChannelId=new_channel.id,
+                categoryId=category.id,
+                ownerId=interaction.user.id,
+                useStage=use_stage
+            )
+
+            await interaction.response.send_message(f"Channel {new_channel.mention} created", ephemeral=True)
         except Exception as e:
-            self.log.error(ctx.guild.id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
+            self.log.error(guild_id, _method, str(e), traceback.format_exc())
+        pass
 
     @setup.group(name="role", aliases=['r'])
     @commands.guild_only()
