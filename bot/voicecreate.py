@@ -1,19 +1,16 @@
 import discord
-import math
-import asyncio
-import aiohttp
-import json
+from discord import app_commands
 from discord.ext import commands
 import inspect
 from random import randint
 import traceback
 import sys
 import os
-import glob
 import typing
 import discordhealthcheck
 
 from bot.cogs.lib import logger, settings
+from bot.cogs.lib.mongodb.guilds import GuildsDatabase
 from bot.cogs.lib.models.default_prefixes import DefaultPrefixes
 from bot.cogs.lib.enums import loglevel
 
@@ -25,11 +22,19 @@ class VoiceCreate(commands.Bot):
         # get the file name without the extension and without the directory
         self._module = os.path.basename(__file__)[:-3]
         self.settings = settings.Settings()
-        super().__init__(
-            command_prefix=self.get_prefix,
-            intents=intents,
-            case_insensitive=True,
-        )
+        super().__init__(command_prefix=self.get_prefix, intents=intents, case_insensitive=True)
+
+        self.remove_command("help")
+        self.guilds_db = GuildsDatabase()
+
+        # A CommandTree is a special type that holds all the application command
+        # state required to make it work. This is a separate class because it
+        # allows all the extra state to be opt-in.
+        # Whenever you want to work with application commands, your tree is used
+        # to store and work with them.
+        # Note: When using commands.Bot instead of discord.Client, the bot will
+        # maintain its own tree instead.
+        # self.tree = app_commands.CommandTree(self)
 
         self.settings = settings.Settings()
         log_level = loglevel.LogLevel[self.settings.log_level.upper()]
@@ -59,6 +64,20 @@ class VoiceCreate(commands.Bot):
                 traceback.print_exc()
 
         self.log.debug(0, f"{self._module}.{self._class}.{_method}", "Setting up bot")
+
+        # get all guilds from the db
+        guilds = [int(g['guild_id']) for g in self.guilds_db.get_all_guilds()]
+        for gid in guilds:
+            try:
+                guild = discord.Object(id=gid)
+                self.log.debug(gid, f"{self._module}.{self._class}.{_method}", f"Clearing app commands for guild {gid}")
+                self.tree.clear_commands(guild=guild)
+                self.tree.copy_global_to(guild=guild)
+                await self.tree.sync(guild=guild)
+                self.log.debug(gid, f"{self._module}.{self._class}.{_method}", f"Synced app commands for guild {gid}")
+            except discord.errors.Forbidden as fe:
+                self.log.debug(gid, f"{self._module}.{self._class}.{_method}", f"Failed to sync app commands for guild {gid}: {fe}")
+
         self.log.debug(0, f"{self._module}.{self._class}.{_method}", "Starting Healthcheck Server")
         self.healthcheck_server = await discordhealthcheck.start(self)
 

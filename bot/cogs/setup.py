@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import traceback
 
@@ -14,6 +15,7 @@ from bot.cogs.lib.bot_helper import BotHelper
 from bot.cogs.lib.messaging import Messaging
 from bot.cogs.lib.enums.addremove import AddRemoveAction
 from bot.cogs.lib.mongodb.channels import ChannelsDatabase
+from bot.cogs.lib.mongodb.categorysettings import CategorySettingsDatabase
 from bot.cogs.lib.RoleSelectView import RoleSelectView
 from bot.cogs.lib.users import Users
 from bot.cogs.lib.settings import Settings
@@ -22,6 +24,8 @@ from bot.cogs.lib.models.category_settings import GuildCategorySettings
 from bot.cogs.lib.models.category_settings import PartialGuildCategorySettings
 
 class SetupCog(commands.Cog):
+    group = app_commands.Group(name="setup", description="Voice Create Setup Commands")
+
     def __init__(self, bot):
         _method = inspect.stack()[0][3]
         # get the file name without the extension and without the directory
@@ -31,6 +35,7 @@ class SetupCog(commands.Cog):
         self.bot = bot
 
         self.channel_db = ChannelsDatabase()
+        self.category_db = CategorySettingsDatabase()
 
         self.messaging = Messaging(bot)
         self._users = Users(bot)
@@ -51,17 +56,6 @@ class SetupCog(commands.Cog):
     async def setup(self, ctx) -> None:
         await ctx.message.delete()
         pass
-
-    @setup.command(name="channel", aliases=['c'])
-    @commands.guild_only()
-    @commands.has_permissions(administrator=True)
-    async def channel(self, ctx) -> None:
-        _method = inspect.stack()[0][3]
-        try:
-            pass
-        except Exception as e:
-            self.log.error(ctx.guild.id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
-            await self.messaging.notify_of_error(ctx)
 
     @commands.guild_only()
     # @commands.has_permissions(administrator=True)
@@ -371,6 +365,120 @@ class SetupCog(commands.Cog):
     #     except Exception as ex:
     #         self.log.error(guild_id, _method, str(ex), traceback.format_exc())
     #         await self.messaging.notify_of_error(ctx)
+
+    @setup.command(name="category", aliases=['cat'])
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def category(self, ctx):
+        _method = inspect.stack()[1][3]
+        guild_id = ctx.guild.id
+
+        # is user an admin
+        if not self._users.isAdmin(ctx):
+            await ctx.channel.send("You are not an administrator. You cannot use this command.", ephemeral=True)
+            return
+
+        pass
+
+    @commands.has_permissions(administrator=True)
+    @commands.guild_only()
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    @group.command(name="category", description="Setup category settings for dynamic voice channels")
+    @app_commands.describe(category="The category to setup for dynamic channels.")
+    @app_commands.describe(bitrate="The bitrate for the dynamic channels. Default: 64")
+    @app_commands.describe(limit="The maximum number of users that can join the dynamic channels. Default: 0")
+    @app_commands.describe(auto_game="Enable channel name from current game. Default: False")
+    @app_commands.describe(allow_soundboard="Allow soundboard in dynamic channels. Default: False")
+    @app_commands.describe(auto_name="Auto name the dynamic channels. Default: True")
+    @app_commands.describe(locked="Lock the dynamic channels so no one can join unless permitted. Default: False")
+    @app_commands.describe(default_role="The default role for the dynamic channels. Default: @everyone")
+    async def category_app_command(
+        self,
+        interaction: discord.Interaction,
+        category: discord.CategoryChannel,
+        bitrate: typing.Optional[int] = None,
+        limit: typing.Optional[int] = None,
+        auto_game: typing.Optional[bool] = False,
+        allow_soundboard: typing.Optional[bool] = False,
+        auto_name: typing.Optional[bool] = True,
+        locked: typing.Optional[bool] = False,
+        default_role: typing.Optional[discord.Role] = None,
+    ):
+        if interaction.guild is None:
+            return
+
+        # is user an admin
+        if not self._users.isAdmin(interaction):
+            await interaction.response.send_message("You are not an administrator of the bot. You cannot use this command.", ephemeral=True)
+            return
+
+        guild_id = interaction.guild.id
+        await self._configure_category(
+            guild_id=guild_id,
+            category_id=category.id,
+            bitrate=bitrate,
+            limit=limit,
+            auto_game=auto_game,
+            allow_soundboard=allow_soundboard,
+            auto_name=auto_name,
+            locked=locked,
+            default_role=default_role
+        )
+        await interaction.response.send_message("Category settings updated", ephemeral=True)
+
+    async def _configure_category(
+        self,
+        guild_id: int,
+        category_id: int,
+        bitrate: typing.Optional[int],
+        limit: typing.Optional[int],
+        auto_game: typing.Optional[bool] = False,
+        allow_soundboard: typing.Optional[bool] = False,
+        auto_name: typing.Optional[bool] = True,
+        locked: typing.Optional[bool] = False,
+        default_role: typing.Optional[discord.Role] = None,
+    ):
+
+        # update the category to set the permission overwrites for the default role
+
+        self.category_db.set_guild_category_settings(
+            guildId=guild_id,
+            categoryId=int(category_id),
+            channelLimit=limit if limit is not None else 0,
+            channelLocked=locked if locked is not None else False,
+            autoGame=auto_game if auto_game is not None else False,
+            allowSoundboard=allow_soundboard if allow_soundboard is not None else False,
+            autoName=auto_name if auto_name is not None else True,
+            bitrate=bitrate if bitrate is not None else 64,
+            defaultRole=default_role.id if default_role else "@everyone"
+        )
+
+    @setup.command(name="channel", aliases=['c'])
+    @commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    async def channel(self, ctx) -> None:
+        _method = inspect.stack()[0][3]
+        try:
+            pass
+        except Exception as e:
+            self.log.error(ctx.guild.id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
+            await self.messaging.notify_of_error(ctx)
+
+    @commands.guild_only()
+    @app_commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
+    @group.command(name="channel", description="Create a new CREATE voice channel")
+    @app_commands.describe(channel_name="The name of the channel to create. Default: CREATE CHANNEL 🔊")
+    @app_commands.describe(category="The category to create the channel in and all dynamic channels. Default: None")
+    async def channel_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel_name: typing.Optional[str] = None,
+        category: typing.Optional[discord.CategoryChannel] = None
+    ):
+        pass
 
     @setup.command(name='init', aliases=['i'])
     @commands.guild_only()

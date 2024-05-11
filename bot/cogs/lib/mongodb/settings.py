@@ -227,48 +227,48 @@ class SettingsDatabase(DatabaseBase):
             )
             return False
 
-    def set_guild_category_settings(self, settings: GuildCategorySettings) -> bool:
-        _method = inspect.stack()[0][3]
-        try:
-            if self.connection is None:
-                self.open()
-            payload = {
-                "guild_id": settings.guild_id,
-                "voice_category_id": settings.category_id,
-                "timestamp": utils.get_timestamp(),
-            }
+    # def set_guild_category_settings(self, settings: GuildCategorySettings) -> bool:
+    #     _method = inspect.stack()[0][3]
+    #     try:
+    #         if self.connection is None:
+    #             self.open()
+    #         payload = {
+    #             "guild_id": settings.guild_id,
+    #             "voice_category_id": settings.category_id,
+    #             "timestamp": utils.get_timestamp(),
+    #         }
 
-            if settings.channel_limit is not None:
-                payload['channel_limit'] = settings.channel_limit
-            if settings.channel_locked is not None:
-                payload['channel_locked'] = settings.channel_locked
-            if settings.bitrate is not None:
-                payload['bitrate'] = settings.bitrate
-            if settings.default_role is not None:
-                payload['default_role'] = settings.default_role
-            if settings.auto_game is not None:
-                payload['auto_game'] = settings.auto_game
-            if settings.allow_soundboard is not None:
-                payload['allow_soundboard'] = settings.allow_soundboard
-            if settings.auto_name is not None:
-                payload['auto_name'] = settings.auto_name
+    #         if settings.channel_limit is not None:
+    #             payload['channel_limit'] = settings.channel_limit
+    #         if settings.channel_locked is not None:
+    #             payload['channel_locked'] = settings.channel_locked
+    #         if settings.bitrate is not None:
+    #             payload['bitrate'] = settings.bitrate
+    #         if settings.default_role is not None:
+    #             payload['default_role'] = settings.default_role
+    #         if settings.auto_game is not None:
+    #             payload['auto_game'] = settings.auto_game
+    #         if settings.allow_soundboard is not None:
+    #             payload['allow_soundboard'] = settings.allow_soundboard
+    #         if settings.auto_name is not None:
+    #             payload['auto_name'] = settings.auto_name
 
 
-            self.connection.category_settings.update_one(
-                {"guild_id": settings.guild_id, "voice_category_id": settings.category_id},
-                { "$set": payload },
-                upsert=True,
-            )
-            return True
-        except Exception as ex:
-            self.log(
-                guildId=int(settings.guild_id) if settings else 0,
-                level=LogLevel.ERROR,
-                method=f"{self._module}.{self._class}.{_method}",
-                message=f"{ex}",
-                stackTrace=traceback.format_exc(),
-            )
-            return False
+    #         self.connection.category_settings.update_one(
+    #             {"guild_id": settings.guild_id, "voice_category_id": settings.category_id},
+    #             { "$set": payload },
+    #             upsert=True,
+    #         )
+    #         return True
+    #     except Exception as ex:
+    #         self.log(
+    #             guildId=int(settings.guild_id) if settings else 0,
+    #             level=LogLevel.ERROR,
+    #             method=f"{self._module}.{self._class}.{_method}",
+    #             message=f"{ex}",
+    #             stackTrace=traceback.format_exc(),
+    #         )
+    #         return False
 
     def get_guild_category_settings(self, guildId: int, categoryId: int) -> typing.Optional[GuildCategorySettings]:
         _method = inspect.stack()[0][3]

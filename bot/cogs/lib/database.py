@@ -47,10 +47,6 @@ class Database():
         pass
     def insert_guild_create_channel_settings(self, guildId, createChannelId, categoryId, ownerId, useStage):
         pass
-    def set_guild_category_settings(self, guildId, categoryId, channelLimit, channelLocked, bitrate, defaultRole):
-        pass
-    def get_guild_category_settings(self, guildId, categoryId):
-        pass
     def update_user_channel_name(self, guildId, userId, channelName):
         pass
     def update_user_limit(self, guildId, userId, limit: int = 0):

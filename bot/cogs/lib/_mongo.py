@@ -218,46 +218,6 @@ class MongoDatabase(database.Database):
         # c.execute("INSERT INTO guild VALUES (?, ?, ?, ?, ?)", (guildId, ownerId, createChannelId, categoryId, stageInt))
         return result is not None
 
-    def set_guild_category_settings(self, guildId: int, categoryId: int, channelLimit: int, channelLocked: bool, bitrate: int, defaultRole: typing.Union[int,str]):
-        try:
-            if self.connection is None:
-                self.open()
-            payload = {
-                "guild_id": str(guildId),
-                "voice_category_id": str(categoryId),
-                "channel_limit": channelLimit,
-                "channel_locked": channelLocked,
-                "bitrate": bitrate,
-                "default_role": defaultRole,
-                "timestamp": utils.get_timestamp()
-            }
-            self.connection.category_settings.update_one({"guild_id": guildId, "voice_category_id": categoryId}, { "$set": payload }, upsert=True)
-            return True
-        except Exception as ex:
-            print(ex)
-            traceback.print_exc()
-            return False
-
-    def get_guild_category_settings(self, guildId: int, categoryId: int):
-        try:
-            if self.connection is None:
-                self.open()
-            row = self.connection.category_settings.find_one({ "guild_id": str(guildId), "voice_category_id": str(categoryId)})
-            if row:
-                result = GuildCategorySettings(
-                    guildId=guildId,
-                    categoryId=categoryId,
-                    channelLimit=row['channel_limit'],
-                    channelLocked=row['channel_locked'],
-                    bitrate=row['bitrate'],
-                    defaultRole=row['default_role']
-                )
-                return result
-            print(f"NO CATEGORY SETTINGS FOUND: {guildId}:{categoryId}")
-            return None
-        except Exception as ex:
-            print(ex)
-            traceback.print_exc()
     def update_user_channel_name(self, guildId, userId, channelName):
         try:
             if self.connection is None:

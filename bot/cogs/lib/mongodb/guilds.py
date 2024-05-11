@@ -20,6 +20,26 @@ class GuildsDatabase(Database):
         self._module = os.path.basename(__file__)[:-3]
         self._class = self.__class__.__name__
 
+    def get_all_guilds(self) -> typing.List[dict]:
+        _method = inspect.stack()[0][3]
+        try:
+            if self.connection is None:
+                self.open()
+            cursor = self.connection.guilds.find()
+            result = []
+            for c in cursor:
+                result.append(c)
+            return result
+        except Exception as ex:
+            self.log(
+                guildId=0,
+                level=LogLevel.ERROR,
+                method=f"{self._module}.{self._class}.{_method}",
+                message=f"{ex}",
+                stackTrace=traceback.format_exc(),
+            )
+            return []
+
     def get_use_stage_on_create(self, guildId: int, channelId: int, categoryId: int) -> bool:
         _method = inspect.stack()[0][3]
         try:
