@@ -89,6 +89,9 @@ class Settings:
 
     def get_string(self, guildId: int, key: str, *args, **kwargs) -> str:
         _method = inspect.stack()[1][3]
+        print(f"get_string: {guildId}, {key}, {args}, {kwargs}")
+        print(f"self.strings: {self.strings}")
+        print(f"self.language: {self.language}")
         if not key:
             return ''
         if str(guildId) in self.strings:
@@ -99,7 +102,11 @@ class Settings:
             else:
                 return utils.str_replace(f"{key}", *args, **kwargs)
         else:
-            if key in self.strings[self.language]:
+            # get guild language
+            lang = self.get_language(guildId)
+            if key in self.strings[lang]:
+                return utils.str_replace(self.strings[lang][key], *args, **kwargs)
+            elif key in self.strings[self.language]:
                 return utils.str_replace(self.strings[self.language][key], *args, **kwargs)
             else:
                 return utils.str_replace(f"{key}", *args, **kwargs)

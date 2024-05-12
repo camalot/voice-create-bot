@@ -66,6 +66,47 @@ class SettingsDatabase(DatabaseBase):
             )
             return False
 
+    def get_language(self, guildId: int) -> str:
+        _method = inspect.stack()[0][3]
+        try:
+            if self.connection is None:
+                self.open()
+            gs = self.connection.guild_settings.find_one({"guild_id": str(guildId)})
+            if gs:
+                return gs['language']
+            return "en-us"
+        except Exception as ex:
+            self.log(
+                guildId=guildId,
+                level=LogLevel.ERROR,
+                method=f"{self._module}.{self._class}.{_method}",
+                message=f"{ex}",
+                stackTrace=traceback.format_exc(),
+            )
+            return "en-us"
+
+    def set_language(self, guildId: int, language: str) -> bool:
+        _method = inspect.stack()[0][3]
+        try:
+            if self.connection is None:
+                self.open()
+            result = self.connection.guild_settings.update_one(
+                {"guild_id": str(guildId)},
+                {"$set": {"language": language, "timestamp": utils.get_timestamp()}},
+            )
+            if result.modified_count == 0:
+                return False
+            return True
+        except Exception as ex:
+            self.log(
+                guildId=guildId,
+                level=LogLevel.ERROR,
+                method=f"{self._module}.{self._class}.{_method}",
+                message=f"{ex}",
+                stackTrace=traceback.format_exc(),
+            )
+            return False
+
     def set_default_role(self, guildId: int, roleId: int, categoryId: typing.Optional[int] = None, userId: typing.Optional[int] = None) -> bool:
         _method = inspect.stack()[0][3]
         try:
@@ -269,49 +310,6 @@ class SettingsDatabase(DatabaseBase):
             )
             return False
 
-    # def set_guild_category_settings(self, settings: GuildCategorySettings) -> bool:
-    #     _method = inspect.stack()[0][3]
-    #     try:
-    #         if self.connection is None:
-    #             self.open()
-    #         payload = {
-    #             "guild_id": settings.guild_id,
-    #             "voice_category_id": settings.category_id,
-    #             "timestamp": utils.get_timestamp(),
-    #         }
-
-    #         if settings.channel_limit is not None:
-    #             payload['channel_limit'] = settings.channel_limit
-    #         if settings.channel_locked is not None:
-    #             payload['channel_locked'] = settings.channel_locked
-    #         if settings.bitrate is not None:
-    #             payload['bitrate'] = settings.bitrate
-    #         if settings.default_role is not None:
-    #             payload['default_role'] = settings.default_role
-    #         if settings.auto_game is not None:
-    #             payload['auto_game'] = settings.auto_game
-    #         if settings.allow_soundboard is not None:
-    #             payload['allow_soundboard'] = settings.allow_soundboard
-    #         if settings.auto_name is not None:
-    #             payload['auto_name'] = settings.auto_name
-
-
-    #         self.connection.category_settings.update_one(
-    #             {"guild_id": settings.guild_id, "voice_category_id": settings.category_id},
-    #             { "$set": payload },
-    #             upsert=True,
-    #         )
-    #         return True
-    #     except Exception as ex:
-    #         self.log(
-    #             guildId=int(settings.guild_id) if settings else 0,
-    #             level=LogLevel.ERROR,
-    #             method=f"{self._module}.{self._class}.{_method}",
-    #             message=f"{ex}",
-    #             stackTrace=traceback.format_exc(),
-    #         )
-    #         return False
-
     def get_guild_category_settings(self, guildId: int, categoryId: int) -> typing.Optional[GuildCategorySettings]:
         _method = inspect.stack()[0][3]
         try:
@@ -369,63 +367,3 @@ class SettingsDatabase(DatabaseBase):
                 stackTrace=traceback.format_exc(),
             )
             return False
-    # def set_guild_settings_language(self, guildId: int, language: str):
-    #     if self.connection is None:
-    #         self.open()
-    #     gs = self.get_guild_settings(guildId=guildId)
-    #     if not gs:
-    #         return False
-    #     payload = {
-    #         "language": language,
-    #         "timestamp": utils.get_timestamp()
-    #     }
-    #     self.connection.guild_settings.update_one({"guild_id": guildId}, { "$set": payload })
-
-    # def insert_or_update_guild_settings(self, guildId: int, prefix: str, defaultRole: int, adminRole: int, language: str):
-    #     try:
-    #         if self.connection is None:
-    #             self.open()
-    #         gs = self.get_guild_settings(guildId=guildId)
-    #         if gs:
-    #             return self.update_guild_settings(guildId=gs.guild_id, prefix=prefix, defaultRole=defaultRole, adminRole=adminRole, language=language)
-    #         else:
-    #             return self.insert_guild_settings(guildId=guildId, prefix=prefix, defaultRole=defaultRole, adminRole=adminRole, language=language)
-    #     except Exception as ex:
-    #         print(ex)
-    #         traceback.print_exc(ex)
-    #         return False
-    # def insert_guild_settings(self, guildId: int, prefix: str, defaultRole: int, adminRole: int, language: str):
-    #     try:
-    #         if self.connection is None:
-    #             self.open()
-    #         payload = {
-    #             "guild_id": guildId,
-    #             "prefix": prefix,
-    #             "default_role": defaultRole,
-    #             "admin_role": adminRole,
-    #             "language": language,
-    #             "timestamp": utils.get_timestamp()
-    #         }
-    #         self.connection.guild_settings.insert_one(payload)
-    #         return True
-    #     except Exception as ex:
-    #         print(ex)
-    #         traceback.print_exc()
-    #         return False
-    # def update_guild_settings(self, guildId: int, prefix: str, defaultRole: int, adminRole: int, language: str):
-    #     try:
-    #         if self.connection is None:
-    #             self.open()
-    #         payload = {
-    #             "prefix": prefix,
-    #             "default_role": defaultRole,
-    #             "admin_role": adminRole,
-    #             "language": language,
-    #             "timestamp": utils.get_timestamp()
-    #         }
-    #         self.connection.guild_settings.update_one({"guild_id": guildId}, { "$set": payload })
-    #         return True
-    #     except Exception as ex:
-    #         print(ex)
-    #         traceback.print_exc()
-    #         return False

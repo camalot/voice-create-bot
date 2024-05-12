@@ -1,5 +1,5 @@
 ---
-name: Lint Helm Chart
+name: Lint Code Base
 on:
   push:
     branches:

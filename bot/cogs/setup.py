@@ -1,3 +1,4 @@
+import glob
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -760,6 +761,66 @@ class SetupCog(commands.Cog):
         except Exception as e:
             await self.messaging.notify_of_error(ctx)
             self.log.error(guild_id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
+
+
+    # @staticmethod
+    async def language_autocomplete(self, interaction: discord.Interaction, current: str) -> typing.List[app_commands.Choice[str]]:
+        # return as list of discord.app_commands.Choice
+        languages = self.settings.languages
+        # languages is a dictionary of language code and language name
+        # set the choice value to the language code
+        # set the choice name to the language name
+        # loop the language dictionary keys and return a list of discord.app_commands.Choice
+        return [
+            app_commands.Choice(name=value, value=key)
+            for key, value in languages.items()
+            if current.lower() in key.lower() or current == "" or current.lower() in value.lower()
+        ]
+
+    @group.command(name="language", description="Get or Set the language for the bot")
+    @commands.guild_only()
+    @app_commands.guild_only()
+    @commands.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(language="The language to set for the bot")
+    @app_commands.autocomplete(language=language_autocomplete)
+    async def language(self, interaction: discord.Interaction, language: typing.Optional[str]) -> None:
+        _method = inspect.stack()[0][3]
+        if interaction.guild is None:
+            return
+        guild_id = interaction.guild.id
+        try:
+            if not self._users.isAdmin(interaction):
+                await interaction.response.send_message(
+                    self.settings.get_string(guild_id, "info_permission_denied"),
+                    ephemeral=True,
+                )
+                return
+
+            if language is None or language == "":
+                language = self.settings.db.get_language(guildId=guild_id)
+                await interaction.response.send_message(
+                    self.settings.get_string(guildId=guild_id, key="info_language_get", language=language),
+                    ephemeral=True,
+                )
+                return
+
+            if not language.lower() in [key.lower() for key,value in self.settings.languages.items()]:
+                await interaction.response.send_message(
+                    self.settings.get_string(guildId=guild_id, key="info_language_not_found", language=language),
+                    ephemeral=True,
+                )
+                return
+
+            self.settings.db.set_language(guildId=guild_id, language=language)
+            self.settings.set_guild_strings(guildId=guild_id, lang=language)
+            await interaction.response.send_message(
+                self.settings.get_string(guildId=guild_id, key="info_language_set", language=language),
+                ephemeral=True,
+            )
+        except Exception as e:
+            self.log.error(guild_id, f"{self._module}.{_method}", f"{e}", traceback.format_exc())
+            await self.messaging.notify_of_error(interaction)
 
 
 async def setup(bot):
