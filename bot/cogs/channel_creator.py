@@ -198,6 +198,9 @@ class ChannelCreatorCog(commands.Cog):
                     userSettings = self.usersettings_db.get_user_settings(
                         guildId=guild_id, userId=channel_owner_id or member.id
                     )
+                    self.log.debug(
+                        guild_id, f"{self._module}.{self._class}.{_method}", f"User Settings: {userSettings}"
+                    )
                     guildSettings = self.settings.db.get_guild_category_settings(
                         guildId=guild_id, categoryId=category_id
                     )
