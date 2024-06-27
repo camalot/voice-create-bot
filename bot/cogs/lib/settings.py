@@ -89,9 +89,9 @@ class Settings:
 
     def get_string(self, guildId: int, key: str, *args, **kwargs) -> str:
         _method = inspect.stack()[1][3]
-        print(f"get_string: {guildId}, {key}, {args}, {kwargs}")
-        print(f"self.strings: {self.strings}")
-        print(f"self.language: {self.language}")
+        # print(f"get_string: {guildId}, {key}, {args}, {kwargs}")
+        # print(f"self.strings: {self.strings}")
+        # print(f"self.language: {self.language}")
         if not key:
             return ''
         if str(guildId) in self.strings:

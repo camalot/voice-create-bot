@@ -1,4 +1,5 @@
 import inspect
+import json
 import os
 import traceback
 
@@ -199,7 +200,7 @@ class ChannelCreatorCog(commands.Cog):
                         guildId=guild_id, userId=channel_owner_id or member.id
                     )
                     self.log.debug(
-                        guild_id, f"{self._module}.{self._class}.{_method}", f"User Settings: {userSettings}"
+                        guild_id, f"{self._module}.{self._class}.{_method}", f"User Settings: {json.dumps(userSettings.__dict__)}"
                     )
                     guildSettings = self.settings.db.get_guild_category_settings(
                         guildId=guild_id, categoryId=category_id
