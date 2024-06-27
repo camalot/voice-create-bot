@@ -190,21 +190,20 @@ class ChannelCreatorCog(commands.Cog):
                     category_id = after.channel.category_id
                     source_channel = after.channel
                     source_channel_id = after.channel.id
-                    channel_owner_id = self.channel_db.get_channel_owner_id(
-                        guildId=guild_id, channelId=source_channel_id
-                    )
-                    if channel_owner_id is None:
-                        channel_owner_id = member.id
 
                     userSettings = self.usersettings_db.get_user_settings(
-                        guildId=guild_id, userId=channel_owner_id or member.id
+                        guildId=guild_id, userId=member.id
                     )
-                    # self.log.debug(
-                    #     guild_id, f"{self._module}.{self._class}.{_method}", f"User Settings: {json.dumps(userSettings.__dict__)}"
-                    # )
+
+                    if userSettings is not None:
+                        self.log.debug(
+                            guild_id, f"{self._module}.{self._class}.{_method}", f"User Settings: {json.dumps(userSettings.__dict__)}"
+                        )
+
                     guildSettings = self.settings.db.get_guild_category_settings(
                         guildId=guild_id, categoryId=category_id
                     )
+
                     useStage = (
                         self.guild_db.get_use_stage_on_create(
                             guildId=guild_id, channelId=source_channel_id, categoryId=category_id
