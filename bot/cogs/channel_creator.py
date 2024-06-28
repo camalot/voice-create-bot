@@ -123,8 +123,8 @@ class ChannelCreatorCog(commands.Cog):
 
                             if after.type == discord.ChannelType.text:
                                 # this might trigger a channel name change for the voice channel
-                                # causing the voice channel to be renamed to the text channel name with the "format" of the text channel
-                                # like spaces will be replaced with dashes
+                                # causing the voice channel to be renamed to the text channel name
+                                # with the "format" of the text channel like spaces will be replaced with dashes
                                 voiceChannel = None
                                 voice_channel_id = self.channel_db.get_voice_channel_id_from_text_channel(
                                     guildId=guild_id, textChannelId=after.id
