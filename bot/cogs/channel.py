@@ -124,6 +124,7 @@ class ChannelCog(commands.Cog):
 
             user_settings = self.usersettings_db.get_user_settings(guildId=guild_id, userId=owner_id)
             if user_settings:
+                self.log.debug(guild_id, f"{self._module}.{self._class}.{_method}", f"Insert/Update Channel Name: {user_settings.channel_name} -> {voice_channel.name}")
                 self.usersettings_db.update_user_channel_name(
                     guildId=guild_id, userId=owner_id, channelName=voice_channel.name
                 )

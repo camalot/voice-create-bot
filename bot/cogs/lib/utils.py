@@ -148,3 +148,10 @@ def get_last_section_in_url(name) -> str:
         if len(name_split) > 1:
             name = name_split[1]
     return name
+
+def format_text_channel_name(name: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9-_]", "", name.replace(" ", "-").replace("_", "-").lower())
+
+def format_voice_channel_name(name: str) -> str:
+    # replace dashes with spaces, remove all non-alphanumeric characters, and convert each word to Title Case
+    return re.sub(r"[^a-zA-Z0-9-_]", "", name.replace("-", " ").replace("_", " ").title())
