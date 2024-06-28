@@ -115,10 +115,7 @@ class ChannelCreatorCog(commands.Cog):
                                     )
 
                                 self.channel_db.track_channel_name(
-                                    guildId=guild_id,
-                                    channelId=after.id,
-                                    ownerId=owner_id,
-                                    name=after.name,
+                                    guildId=guild_id, channelId=after.id, ownerId=owner_id, name=after.name
                                 )
 
                             if after.type == discord.ChannelType.text:
@@ -200,13 +197,13 @@ class ChannelCreatorCog(commands.Cog):
                     source_channel = after.channel
                     source_channel_id = after.channel.id
 
-                    userSettings = self.usersettings_db.get_user_settings(
-                        guildId=guild_id, userId=member.id
-                    )
+                    userSettings = self.usersettings_db.get_user_settings(guildId=guild_id, userId=member.id)
 
                     if userSettings is not None:
                         self.log.debug(
-                            guild_id, f"{self._module}.{self._class}.{_method}", f"User Settings: {json.dumps(userSettings.__dict__)}"
+                            guild_id,
+                            f"{self._module}.{self._class}.{_method}",
+                            f"User Settings: {json.dumps(userSettings.__dict__)}",
                         )
 
                     guildSettings = self.settings.db.get_guild_category_settings(
