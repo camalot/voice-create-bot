@@ -106,7 +106,9 @@ class ChannelCreatorCog(commands.Cog):
                                             }''',
                                             delete_after=5,
                                         )
-                                        self.log.debug(guild_id, _method, f"Text Channel Name Changed: {new_channel_name}")
+                                        self.log.debug(
+                                            guild_id, _method, f"Text Channel Name Changed: {new_channel_name}"
+                                        )
                                 else:
                                     self.log.warn(
                                         guildId=guild_id,
@@ -139,11 +141,13 @@ class ChannelCreatorCog(commands.Cog):
                                             f'{owner.mention}, {utils.str_replace(self.settings.get_string(guild_id, "info_channel_name_change"), channel=after.name)}',
                                             delete_after=5,
                                         )
-                                        self.log.debug(guild_id, _method, f"Voice Channel Name Changed: {new_channel_name}")
+                                        self.log.debug(
+                                            guild_id, _method, f"Voice Channel Name Changed: {new_channel_name}"
+                                        )
 
                             if user_settings:
                                 self.usersettings_db.update_user_channel_name(
-                                    guildId=guild_id, userId=owner_id, channelName=new_channel_name
+                                    guildId=guild_id, userId=owner_id, channelName=new_channel_name or after.name
                                 )
                             else:
                                 self.usersettings_db.insert_user_settings(
