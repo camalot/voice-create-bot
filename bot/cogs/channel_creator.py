@@ -81,7 +81,7 @@ class ChannelCreatorCog(commands.Cog):
                             system_default_role = after.guild.default_role
 
                             self.log.debug(guild_id, _method, f"Channel Type: {after.type}")
-
+                            new_channel_name = after.name
                             if after.type == discord.ChannelType.voice:
                                 # new channel name
                                 text_channel_id = self.channel_db.get_text_channel_id(
@@ -92,9 +92,9 @@ class ChannelCreatorCog(commands.Cog):
                                     text_channel = await self._channels.get_or_fetch_channel(int(text_channel_id))
                                 if text_channel:
                                     self.log.debug(guild_id, _method, f"Change Text Channel Name: {after.name}")
-                                    new_tc_name = utils.format_text_channel_name(after.name)
-                                    if text_channel.name != new_tc_name:
-                                        await text_channel.edit(name=new_tc_name)
+                                    new_channel_name = after.name
+                                    if text_channel.name != new_channel_name:
+                                        await text_channel.edit(name=new_channel_name)
                                         await self._messaging.send_embed(
                                             text_channel,
                                             self.settings.get_string(guild_id, 'title_update_channel_name'),
@@ -106,7 +106,7 @@ class ChannelCreatorCog(commands.Cog):
                                             }''',
                                             delete_after=5,
                                         )
-                                        self.log.debug(guild_id, _method, f"Text Channel Name Changed: {new_tc_name}")
+                                        self.log.debug(guild_id, _method, f"Text Channel Name Changed: {new_channel_name}")
                                 else:
                                     self.log.warn(
                                         guildId=guild_id,
@@ -130,26 +130,26 @@ class ChannelCreatorCog(commands.Cog):
                                     voiceChannel = await self._channels.get_or_fetch_channel(voice_channel_id)
                                 if voiceChannel:
                                     self.log.debug(guild_id, _method, f"Change Voice Channel Name: {after.name}")
-                                    new_vc_name = utils.format_voice_channel_name(after.name)
-                                    if voiceChannel.name != new_vc_name:
-                                        await voiceChannel.edit(name=new_vc_name)
+                                    new_channel_name = utils.format_voice_channel_name(after.name)
+                                    if voiceChannel.name != new_channel_name:
+                                        await voiceChannel.edit(name=new_channel_name)
                                         await self._messaging.send_embed(
                                             after,
                                             self.settings.get_string(guild_id, 'title_update_channel_name'),
                                             f'{owner.mention}, {utils.str_replace(self.settings.get_string(guild_id, "info_channel_name_change"), channel=after.name)}',
                                             delete_after=5,
                                         )
-                                        self.log.debug(guild_id, _method, f"Voice Channel Name Changed: {new_vc_name}")
+                                        self.log.debug(guild_id, _method, f"Voice Channel Name Changed: {new_channel_name}")
 
                             if user_settings:
                                 self.usersettings_db.update_user_channel_name(
-                                    guildId=guild_id, userId=owner_id, channelName=after.name
+                                    guildId=guild_id, userId=owner_id, channelName=new_channel_name
                                 )
                             else:
                                 self.usersettings_db.insert_user_settings(
                                     guildId=guild_id,
                                     userId=owner_id,
-                                    channelName=after.name,
+                                    channelName=new_channel_name,
                                     channelLimit=CategorySettingsDefaults.CHANNEL_LIMIT,
                                     channelLocked=CategorySettingsDefaults.LOCKED,
                                     bitrate=CategorySettingsDefaults.BITRATE,
