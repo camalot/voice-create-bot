@@ -40,7 +40,7 @@
           "description": "",
           "usage": "{{prefix}}channel name [name]",
           "examples": [
-            "{{prefix}}channel name my awesome channel"
+            "{{prefix}}channel name \"my awesome channel\""
           ],
           "admin": false,
           "aliases": []
@@ -58,7 +58,7 @@
           "title": "help_command_rename",
           "usage": "{{prefix}}rename <channel name>",
           "examples": [
-            "{{prefix}}rename New Channel Name"
+            "{{prefix}}rename \"New Channel Name\""
           ],
           "admin": true,
           "aliases": []

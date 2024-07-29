@@ -792,7 +792,7 @@ class ChannelCog(commands.Cog):
             owner = ctx.author
             category_id = ctx.author.voice.channel.category.id
             current_voice_channel_id = None
-            if self.isInVoiceChannel(ctx):
+            if self._users.isInVoiceChannel(ctx):
                 current_voice_channel = ctx.author.voice.channel
                 current_voice_channel_id = current_voice_channel.id
             else:
@@ -804,24 +804,29 @@ class ChannelCog(commands.Cog):
                 )
                 return
 
-            if self.isAdmin(ctx):
-                owner_id = self.db.get_channel_owner_id(guildId=guild_id, channelId=current_voice_channel_id)
-                owner = await self.get_or_fetch_user(owner_id)
-            default_role = self.db.get_default_role(guildId=guild_id, categoryId=category_id, userId=owner_id)
+            if self._users.isAdmin(ctx):
+                owner_id = self.channel_db.get_channel_owner_id(guildId=guild_id, channelId=current_voice_channel_id)
+                owner = await self._users.get_or_fetch_user(owner_id)
+            default_role = self.settings.db.get_default_role(guildId=guild_id, categoryId=category_id, userId=owner_id)
 
             validRole = len([ x for x in ctx.guild.roles if x.name == default_role or x.id == default_role ]) == 1
             if not validRole:
                 default_role = ctx.guild.default_role.id
-            owned_channel_ids = self.db.get_tracked_voice_channel_id_by_owner(guildId=guild_id,ownerId=owner_id)
+            owned_channel_ids = self.channel_db.get_tracked_voice_channel_id_by_owner(guildId=guild_id,ownerId=owner_id)
             is_owner = len([ c for c in owned_channel_ids if int(c) == current_voice_channel_id ]) >= 1
-            if not is_owner and not self.isAdmin(ctx):
-                await self.sendEmbed(ctx.channel, self.get_string(guild_id, 'title_permission_denied'), f"{ctx.author.mention}, {self.get_string(guild_id, 'info_permission_denied')}", delete_after=5)
+            if not is_owner and not self._users.isAdmin(ctx):
+                await self._messaging.send_embed(
+                    ctx.channel,
+                    self.settings.get_string(guild_id, 'title_permission_denied'),
+                    f"{ctx.author.mention}, {self.settings.get_string(guild_id, 'info_permission_denied')}",
+                    delete_after=5,
+                )
             else:
                 # everyone = discord.utils.get(ctx.guild.roles, name=default_role)
-                everyone = self.get_by_name_or_id(ctx.guild.roles, default_role)
-                text_channel_id = self.db.get_text_channel_id(guildId=guild_id, voiceChannelId=current_voice_channel_id)
+                everyone = utils.get_by_name_or_id(ctx.guild.roles, default_role)
+                text_channel_id = self.channel_db.get_text_channel_id(guildId=guild_id, voiceChannelId=current_voice_channel_id)
                 if text_channel_id:
-                    text_channel = await self.get_or_fetch_channel(text_channel_id)
+                    text_channel = await self._channels.get_or_fetch_channel(text_channel_id)
 
                     if text_channel:
                         await text_channel.set_permissions(owner, connect=True, read_messages=True, send_messages=True, view_channel=True, read_message_history=True)
@@ -835,12 +840,17 @@ class ChannelCog(commands.Cog):
                         if text_channel:
                             await text_channel.set_permissions(role, read_messages=True,send_messages=True, view_channel=True, read_message_history=True)
 
-                await self.sendEmbed(ctx.channel, self.get_string(guild_id, 'title_channel_unlock'), f'{author.mention}, {self.get_string(guild_id, "info_unlocked")}', delete_after=5)
+                await self._messaging.send_embed(
+                    ctx.channel,
+                    self.settings.get_string(guild_id, 'title_channel_unlock'),
+                    f'{author.mention}, {self.settings.get_string(guild_id, "info_unlocked")}',
+                    delete_after=5,
+                )
         except Exception as ex:
             self.log.error(guild_id, _method, str(ex), traceback.format_exc())
-            await self.notify_of_error(ctx)
+            await self._messaging.notify_of_error(ctx)
         finally:
-            self.db.close()
+            self.channel_db.close()
             await ctx.message.delete()
 
 async def setup(bot):
