@@ -1,5 +1,6 @@
 import inspect
 import os
+import socket
 import time
 import traceback
 
@@ -70,12 +71,34 @@ class VoiceCreateMetrics:
             labelnames=["guild_id"],
         )
 
+        self.healthy = Gauge(
+            namespace=self.namespace, name=f"healthy", documentation="The health of the bot", labelnames=[]
+        )
+
         self.sum_logs = Gauge(
             namespace=self.namespace, name=f"logs", documentation="The number of logs", labelnames=["guild_id", "level"]
         )
 
         self.log.debug(0, f"{self._module}.{self._class}.{_method}", f"Metrics initialized")
 
+    def check_health(self):
+        """Check the health of the bot"""
+        _method = inspect.stack()[1][3]
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.settimeout(10)
+                    s.connect(("127.0.0.1", 40404))
+                    data = s.recv(1024)
+                except (ConnectionError, socket.timeout, ConnectionRefusedError) as ex:
+                    data = b""
+
+            self.healthy.set(1 if data == b"healthy" else 0)
+            self.errors.labels(source="healthy").set(0)
+        except Exception as ex:
+            self.log.error(0, f"{self._module}.{self._class}.{_method}", str(ex), traceback.format_exc())
+            self.healthy.set(0)
+            self.errors.labels(source="healthy").set(1)
 
     def run_metrics_loop(self):
         """Metrics fetching loop"""
@@ -96,6 +119,9 @@ class VoiceCreateMetrics:
 
     def fetch(self):
         _method = inspect.stack()[0][3]
+
+        self.check_health()
+
         # 0 is the "global" guild for anything that isn't guild aware
         known_guilds = ["0"]
         try:
